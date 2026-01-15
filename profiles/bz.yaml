@@ -1,0 +1,3 @@
+db_path: data/bz.sqlite
+enabled_companies:
+  - Netflix

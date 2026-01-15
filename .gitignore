@@ -13,6 +13,8 @@ env/
 # Local data
 jobs.sqlite3
 *.db
+data/
+*.sqlite
 
 # OS / editor
 .DS_Store

@@ -7,10 +7,12 @@ if sys.platform.startswith("win"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 import streamlit as st
+from core.config import load_profile
 
 from connectors.mathworks import scrape_mathworks
 from connectors.amazon import scrape_amazon
 from connectors.dassault import scrape_dassault
+from connectors.netflix import scrape_netflix
 from storage.db import (
     get_conn,
     init_db,
@@ -24,13 +26,29 @@ from storage.db import (
 )
 from utils.location import display_location
 
-conn = get_conn()
-init_db(conn)
-
 st.set_page_config(page_title="RoleRadar", layout="wide")
 
-companies = [row[0] for row in conn.execute("SELECT DISTINCT company FROM jobs ORDER BY company").fetchall()]
-companies = companies or ["MathWorks", "Amazon", "Dassault Systemes"]  # fallback for first run
+profile_name = st.sidebar.selectbox("Profile", ["yt", "bz"], index=0)
+cfg = load_profile(profile_name)
+enabled = set(cfg.enabled_companies or [])
+
+conn = get_conn(cfg.db_path)
+init_db(conn)
+
+# Pull distinct companies from DB
+db_companies = [
+    row[0]
+    for row in conn.execute("SELECT DISTINCT company FROM jobs ORDER BY company").fetchall()
+]
+
+# Profile-aware dropdown list:
+# (DB companies ∩ enabled) + (enabled not yet in DB)
+if enabled:
+    companies = [c for c in db_companies if c in enabled]
+    companies += [c for c in cfg.enabled_companies if c not in set(companies)]
+else:
+    # If profile doesn't specify enabled companies, fall back to DB or defaults
+    companies = db_companies or ["MathWorks", "Amazon", "Dassault Systemes"]
 
 selected_company = st.selectbox("Company", ["(All)"] + companies)
 
@@ -41,28 +59,43 @@ col1, col2, col3 = st.columns([1.1, 1.1, 2.2], vertical_alignment="center")
 
 with col1:
     st.subheader("Controls")
+    
     if st.button("Run update now", type="primary"):
         with st.spinner("Fetching latest postings..."):
+            summary_parts = []
+
             # MathWorks (RSS)
-            mw_jobs = scrape_mathworks()
-            upsert_jobs(conn, mw_jobs)
-            mw_new = get_new_today(conn, "MathWorks")
-            record_run(conn, "MathWorks", total_jobs=len(mw_jobs), new_jobs=len(mw_new))
+            if "MathWorks" in enabled:
+                mw_jobs = scrape_mathworks()
+                upsert_jobs(conn, mw_jobs)
+                mw_new = get_new_today(conn, "MathWorks")
+                record_run(conn, "MathWorks", total_jobs=len(mw_jobs), new_jobs=len(mw_new))
+                summary_parts.append(f"MathWorks new: {len(mw_new)}")
 
             # Amazon (JSON API)
-            amz_jobs = scrape_amazon()
-            upsert_jobs(conn, amz_jobs)
-            amz_new = get_new_today(conn, "Amazon")
-            record_run(conn, "Amazon", total_jobs=len(amz_jobs), new_jobs=len(amz_new))
+            if "Amazon" in enabled:
+                amz_jobs = scrape_amazon()
+                upsert_jobs(conn, amz_jobs)
+                amz_new = get_new_today(conn, "Amazon")
+                record_run(conn, "Amazon", total_jobs=len(amz_jobs), new_jobs=len(amz_new))
+                summary_parts.append(f"Amazon new: {len(amz_new)}")
 
             # Dassault Systemes (HTML)
-            ds_jobs = scrape_dassault()
-            upsert_jobs(conn, ds_jobs)
-            ds_new = get_new_today(conn, "Dassault Systemes")
-            record_run(conn, "Dassault Systemes", total_jobs=len(ds_jobs), new_jobs=len(ds_new))
+            if "Dassault Systemes" in enabled:
+                ds_jobs = scrape_dassault()
+                upsert_jobs(conn, ds_jobs)
+                ds_new = get_new_today(conn, "Dassault Systemes")
+                record_run(conn, "Dassault Systemes", total_jobs=len(ds_jobs), new_jobs=len(ds_new))
+                summary_parts.append(f"Dassault new: {len(ds_new)}")
 
-        st.success(f"Updated. MathWorks new: {len(mw_new)} | Amazon new: {len(amz_new)} | Dassault new: {len(ds_new)}")
-        # st.success(f"Updated. MathWorks new: {len(mw_new)} | Amazon new: {len(amz_new)}")
+            if "Netflix" in enabled:
+                nf_jobs = scrape_netflix()
+                upsert_jobs(conn, nf_jobs)
+                nf_new = get_new_today(conn, "Netflix")
+                record_run(conn, "Netflix", total_jobs=len(nf_jobs), new_jobs=len(nf_new))
+                summary_parts.append(f"Netflix new: {len(nf_new)}")
+
+        st.success("Updated. " + " | ".join(summary_parts) if summary_parts else "No companies enabled in this profile.")
 
 with col2:
     st.subheader("Status")

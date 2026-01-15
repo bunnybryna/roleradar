@@ -1,0 +1,5 @@
+db_path: data/yt.sqlite
+enabled_companies:
+  - MathWorks
+  - Amazon
+  - Dassault Systemes
