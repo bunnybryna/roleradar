@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import sqlite3
-from dataclasses import asdict
 from datetime import date, datetime
-from typing import Iterable, Optional, Sequence
+from typing import Any, Iterable, Optional, Protocol
 
-from connectors.mathworks import Job
+
+class JobLike(Protocol):
+    company: str
+    job_id: str
+    title: str
+    url: str
+    location: str | None
 
 
 DB_PATH_DEFAULT = "jobs.sqlite3"
@@ -41,7 +46,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def upsert_jobs(conn: sqlite3.Connection, jobs: Iterable[Job]) -> None:
+def upsert_jobs(conn: sqlite3.Connection, jobs: Iterable[JobLike]) -> None:
     today = date.today().isoformat()
     for j in jobs:
         conn.execute("""
@@ -82,7 +87,7 @@ def get_last_run(conn: sqlite3.Connection, company: str) -> Optional[tuple]:
     return cur.fetchone()
 
 
-def get_new_today(conn: sqlite3.Connection, company: str) -> Sequence[tuple]:
+def get_new_today(conn: sqlite3.Connection, company: str) -> list[tuple[str, str, str, str]]:
     today = date.today().isoformat()
     cur = conn.execute("""
         SELECT title, url, first_seen, last_seen
@@ -97,7 +102,7 @@ def search_jobs(conn, company: str | None, query: str, location: str | None = No
     q = f"%{query.strip()}%"
 
     where = ["title LIKE ?"]
-    params = [q]
+    params: list[Any] = [q]
 
     if company:
         where.insert(0, "company = ?")
@@ -119,7 +124,7 @@ def search_jobs(conn, company: str | None, query: str, location: str | None = No
 
 def list_recent(conn, company: str | None, location: str | None = None, limit: int = 2000):
     where = []
-    params = []
+    params: list[Any] = []
 
     if company:
         where.append("company = ?")

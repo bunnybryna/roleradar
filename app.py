@@ -13,6 +13,7 @@ from connectors.mathworks import scrape_mathworks
 from connectors.amazon import scrape_amazon
 from connectors.dassault import scrape_dassault
 from connectors.netflix import scrape_netflix
+from connectors.comsol import scrape_comsol
 from storage.db import (
     get_conn,
     init_db,
@@ -94,6 +95,13 @@ with col1:
                 nf_new = get_new_today(conn, "Netflix")
                 record_run(conn, "Netflix", total_jobs=len(nf_jobs), new_jobs=len(nf_new))
                 summary_parts.append(f"Netflix new: {len(nf_new)}")
+
+            if "COMSOL" in enabled:
+                comsol_jobs = scrape_comsol()
+                upsert_jobs(conn, comsol_jobs)
+                comsol_new = get_new_today(conn, "COMSOL")
+                record_run(conn, "COMSOL", total_jobs=len(comsol_jobs), new_jobs=len(comsol_new))
+                summary_parts.append(f"COMSOL new: {len(comsol_new)}")
 
         st.success("Updated. " + " | ".join(summary_parts) if summary_parts else "No companies enabled in this profile.")
 
