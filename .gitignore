@@ -22,3 +22,9 @@ data/
 
 # Logs
 *.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.auto.tfvars
