@@ -40,9 +40,14 @@ This setup mirrors the architecture from https://github.com/eatonc/actual-gcp:
 ### 1) Create a GCP project
 Create a project (example ID: roleradar-486220) and attach billing in the GCP console.
 
-Enable Compute Engine API:
+Enable the Compute Engine API:
 ```bash
 gcloud services enable compute.googleapis.com --project roleradar-486220
+```
+
+Authenticate ADC for Terraform:
+```bash
+gcloud auth application-default login
 ```
 
 ### 2) Build and publish the app image to GHCR
@@ -101,4 +106,17 @@ SQLite files are stored on a persistent disk mounted to `/mnt/disks/roleradar-da
 ```bash
 docker pull ghcr.io/bunnybryna/roleradar:latest
 sudo systemctl restart roleradar
+```
+
+### Troubleshooting
+If SSH times out, enable IAP TCP forwarding in Terraform:
+
+```hcl
+allow_ssh_iap = true
+```
+
+Then apply and connect using:
+
+```bash
+gcloud compute ssh roleradar --zone us-east1-b --project roleradar-486220 --tunnel-through-iap
 ```

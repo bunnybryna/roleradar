@@ -67,3 +67,15 @@ variable "ghcr_token" {
   default     = ""
   sensitive   = true
 }
+
+variable "allow_ssh_iap" {
+  type        = bool
+  description = "Allow SSH from IAP TCP forwarding"
+  default     = false
+}
+
+variable "ssh_source_ranges" {
+  type        = list(string)
+  description = "Source ranges for SSH firewall"
+  default     = ["35.235.240.0/20"]
+}

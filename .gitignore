@@ -28,3 +28,6 @@ data/
 *.tfstate
 *.tfstate.*
 *.auto.tfvars
+tfplan
+*.tfplan
+terraform.exe

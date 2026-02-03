@@ -20,10 +20,10 @@ fi
 mount -a
 chmod 777 "$MOUNT_DIR"
 
-mkdir -p /opt/caddy /opt/caddy/data /opt/caddy/config
-mkdir -p /opt/duckdns
+mkdir -p /var/lib/caddy /var/lib/caddy/data /var/lib/caddy/config
+mkdir -p /var/lib/duckdns
 
-cat > /opt/caddy/Caddyfile <<EOF
+cat > /var/lib/caddy/Caddyfile <<EOF
 ${fqdn} {
   encode gzip
   reverse_proxy roleradar:8501
@@ -49,7 +49,7 @@ Requires=docker.service
 [Service]
 Restart=always
 ExecStartPre=-/usr/bin/docker rm -f roleradar
-ExecStart=/usr/bin/docker run --name roleradar --restart=unless-stopped --network roleradar -p 127.0.0.1:8501:8501 -v ${MOUNT_DIR}:/app/data ${image}
+ExecStart=/usr/bin/docker run --name roleradar --restart=unless-stopped --network roleradar -p 127.0.0.1:8501:8501 -v $${MOUNT_DIR}:/app/data ${image}
 ExecStop=/usr/bin/docker stop roleradar
 
 [Install]
@@ -65,7 +65,7 @@ Requires=docker.service
 [Service]
 Restart=always
 ExecStartPre=-/usr/bin/docker rm -f caddy
-ExecStart=/usr/bin/docker run --name caddy --restart=unless-stopped --network roleradar -p 80:80 -p 443:443 -v /opt/caddy/Caddyfile:/etc/caddy/Caddyfile -v /opt/caddy/data:/data -v /opt/caddy/config:/config caddy:2.8
+ExecStart=/usr/bin/docker run --name caddy --restart=unless-stopped --network roleradar -p 80:80 -p 443:443 -v /var/lib/caddy/Caddyfile:/etc/caddy/Caddyfile -v /var/lib/caddy/data:/data -v /var/lib/caddy/config:/config caddy:2.8
 ExecStop=/usr/bin/docker stop caddy
 
 [Install]
@@ -81,7 +81,7 @@ Requires=docker.service
 [Service]
 Restart=always
 ExecStartPre=-/usr/bin/docker rm -f duckdns
-ExecStart=/usr/bin/docker run --name duckdns --restart=unless-stopped -e SUBDOMAINS=${duckdns_subdomain} -e TOKEN=${duckdns_token} -e LOG_FILE=true -v /opt/duckdns:/config linuxserver/duckdns:latest
+ExecStart=/usr/bin/docker run --name duckdns --restart=unless-stopped -e SUBDOMAINS=${duckdns_subdomain} -e TOKEN=${duckdns_token} -e LOG_FILE=true -v /var/lib/duckdns:/config linuxserver/duckdns:latest
 ExecStop=/usr/bin/docker stop duckdns
 
 [Install]
